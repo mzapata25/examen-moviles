@@ -16,7 +16,10 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel // O hiltViewModel() si ya configuraste Hilt
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.app.examen.domain.model.CovidReport
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -91,7 +94,10 @@ fun HomeScreen(
                     }
                     else -> {
                         // Contenido principal (Resultados)
-                        HomeContent(state.lastCountrySearched)
+                        HomeContent(
+                            lastCountry = state.lastCountrySearched,
+                            data = state.covidData
+                        )
                     }
                 }
             }
@@ -100,9 +106,13 @@ fun HomeScreen(
 }
 
 @Composable
-fun HomeContent(lastCountry: String?) {
+fun HomeContent(
+    lastCountry: String?,
+    data: List<CovidReport> // Nuevo parámetro
+) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         if (lastCountry != null) {
+            // Tarjeta de "Última búsqueda" (Igual que tenías)
             Card(
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.secondaryContainer
@@ -127,8 +137,23 @@ fun HomeContent(lastCountry: String?) {
                     }
                 }
             }
+
             Spacer(modifier = Modifier.height(16.dp))
-            Text("Aquí se mostrarán las estadísticas...")
+
+            // Lógica de visualización de datos
+            if (data.isNotEmpty()) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentPadding = PaddingValues(bottom = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(data) { report ->
+                        RegionCard(report)
+                    }
+                }
+            } else {
+                Text("No hay datos para mostrar o no se encontraron resultados.")
+            }
         } else {
             Text(
                 text = "Ingresa un país para comenzar",
@@ -139,6 +164,61 @@ fun HomeContent(lastCountry: String?) {
     }
 }
 
+// Composable auxiliar para pintar cada Región
+@Composable
+fun RegionCard(report: CovidReport) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            // Título de la Región
+            Text(
+                text = report.region,
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.primary
+            )
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+            // Mostramos solo el dato más reciente (el primero de la lista ordenada)
+            if (report.dailyStats.isNotEmpty()) {
+                val latest = report.dailyStats.first()
+
+                Text(
+                    text = "Fecha: ${latest.date}",
+                    style = MaterialTheme.typography.labelLarge
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    StatItem(label = "Casos Totales", value = latest.total.toString())
+                    StatItem(label = "Nuevos Casos", value = latest.newCases.toString())
+                }
+            } else {
+                Text("Sin estadísticas disponibles")
+            }
+        }
+    }
+}
+
+@Composable
+fun StatItem(label: String, value: String) {
+    Column {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.outline
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+        )
+    }
+}
 @Preview(showBackground = true)
 @Composable
 fun HomeScreenPreview() {
